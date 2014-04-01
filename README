@@ -1,0 +1,5 @@
+Websysstat gathers system statistics and presents them in graphs shown via a
+web interface.
+
+Websysstat is covered by the GPL v2 or greater license.
+libhttpserver is covered by the LGPL license in COPYING.LESSER.

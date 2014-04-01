@@ -1,5 +1,16 @@
 Websysstat gathers system statistics and presents them in graphs shown via a
 web interface.
 
+To compile: g++ -o websysstat -lhttpserver main.cpp
+
+If you do not have libhttpserver.so already then run as:
+LD_LIBRARY_PATH=. ./websysstat
+Other run as:
+./websysstat
+
+Websysstat should be run from a directory with a htdocs sub-directory. The
+htdocs sub-directory should contain all of the client-facing html, javascript
+and images.
+
 Websysstat is covered by the GPL v2 or greater license.
 libhttpserver is covered by the LGPL license in COPYING.LESSER.

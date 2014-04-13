@@ -23,6 +23,7 @@
 #include <fstream>
 #include <time.h>
 #include <sstream>
+#include <json/json.h>
 
 using namespace std;
 using namespace httpserver;
@@ -48,17 +49,16 @@ void main_resource::render(const http_request &req, http_response **res)
   }
 
   if (path == "/loadavg") {
-    string buffer;
-    buffer = "{\n";
-    buffer += "\t\"min1\": {\n";
-    buffer += "\t\t\"label\": \"1 min load average\",\n";
-    buffer += "\t\t\"data\": [[";
+    json_object *min1_jo = json_object_new_object();
+    json_object *min5_jo = json_object_new_object();
+    json_object *min15_jo = json_object_new_object();
+    json_object *data = json_object_new_array();
+    json_object *data_holder = json_object_new_array();
+    json_object *load_jo = json_object_new_object();
+
     time_t t = time(NULL);
-    datestr << (t*1000);
-    buffer += datestr.str();
-    buffer += ", ";
-    
-    ifstream file("/proc/loadavg",ios_base::in);
+
+    ifstream file("/proc/loadavg", ios_base::in);
     float min1, min5, min15;
     string runqueue;
     pid_t last_pid;
@@ -74,23 +74,37 @@ void main_resource::render(const http_request &req, http_response **res)
       cout << "loadavg: " << min1 << " " << min5 << " " << min15 << " " 
 	   << runqueue << " " << last_pid << endl;
     }
-    datastr << min1;
-    buffer += datastr.str();
-    buffer += "]]},\n";
-    
-    buffer += "\t\"min5\": {\n";
-    buffer += "\t\t\"label\": \"5 min load average\",\n";
-    buffer += "\t\t\"data\": [[";
-    buffer += datestr.str();
-    buffer += ", ";
-    datastr.str("");
-    datastr << min5;
-    buffer += datastr.str();
-    buffer += "]]}\n";
-    buffer += "}\n";
 
-    cout << buffer << endl;
-    *res = new http_string_response(buffer, 200, "text/html");    
+    json_object_object_add(min1_jo, "label", json_object_new_string("1 min load average"));
+    json_object_array_add(data, json_object_new_int(t*1000));   
+    json_object_array_add(data, json_object_new_double(min1));
+    json_object_array_add(data_holder, data);
+    json_object_object_add(min1_jo, "data", data_holder);
+
+    data = json_object_new_array();
+    data_holder = json_object_new_array();
+    json_object_object_add(min5_jo, "label", json_object_new_string("5 min load average"));
+    json_object_array_add(data, json_object_new_int(t*1000));
+    json_object_array_add(data, json_object_new_double(min5));
+    json_object_array_add(data_holder, data);
+    json_object_object_add(min5_jo, "data", data_holder);
+
+    data = json_object_new_array();
+    data_holder = json_object_new_array();
+    json_object_object_add(min15_jo, "label", json_object_new_string("15 min load average"));
+    json_object_array_add(data, json_object_new_int(t*1000));
+    json_object_array_add(data, json_object_new_double(min15));
+    json_object_array_add(data_holder, data);
+    json_object_object_add(min15_jo, "data", data_holder);
+
+    json_object_object_add(load_jo, "min1", min1_jo);
+    json_object_object_add(load_jo, "min5", min5_jo);
+    json_object_object_add(load_jo, "min15", min15_jo);
+
+    cout << json_object_to_json_string(load_jo) << endl;
+    *res = new http_string_response(json_object_to_json_string(load_jo), 200, "text/html");
+
+    json_object_put(load_jo);
   } else if (path == "/diskstats") {
     string buffer;
     buffer = "{\n";

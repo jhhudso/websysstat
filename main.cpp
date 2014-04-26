@@ -243,9 +243,6 @@ int main(int argc, char * argv[])
 
   chdir("htdocs");
   webserver ws = create_webserver(port).max_threads(5);
-  if (!ws) {
-    cerr << "error" << endl;
-  }
 
   main_resource mr;
   ws.register_resource("/", &mr, true);

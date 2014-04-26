@@ -151,6 +151,17 @@ void main_resource::render(const http_request &req, http_response **res)
     buffer += "}\n";
     cout << buffer << endl;
     *res = new http_string_response(buffer, 200, "text/html");
+  } else if (path == "/sysstat") {
+    fflush(stdin);
+    fflush(stdout);
+    char pbuf[1024];
+    string buffer;
+    FILE *sadf = popen("sadf -j","re");
+    while (fgets(pbuf, sizeof(pbuf), sadf) != NULL) {
+      buffer += pbuf;
+    }
+    *res = new http_string_response(buffer, 200, "text/html");   
+    pclose(sadf);
   } else {
     string cwd(get_current_dir_name());
     path = cwd + path;

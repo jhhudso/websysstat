@@ -82,24 +82,24 @@ void main_resource::render(const http_request &req, http_response **res)
       }
     }
 
-    json_object_object_add(min1_jo, "label", json_object_new_string("1 min load average"));
-    json_object_array_add(data, json_object_new_int(t*1000));   
+    json_object_object_add(min1_jo, "label", json_object_new_string("ldavg-1"));
+    json_object_array_add(data, json_object_new_int64(t*1000));   
     json_object_array_add(data, json_object_new_double(min1));
     json_object_array_add(data_holder, data);
     json_object_object_add(min1_jo, "data", data_holder);
 
     data = json_object_new_array();
     data_holder = json_object_new_array();
-    json_object_object_add(min5_jo, "label", json_object_new_string("5 min load average"));
-    json_object_array_add(data, json_object_new_int(t*1000));
+    json_object_object_add(min5_jo, "label", json_object_new_string("ldavg-5"));
+    json_object_array_add(data, json_object_new_int64(t*1000));
     json_object_array_add(data, json_object_new_double(min5));
     json_object_array_add(data_holder, data);
     json_object_object_add(min5_jo, "data", data_holder);
 
     data = json_object_new_array();
     data_holder = json_object_new_array();
-    json_object_object_add(min15_jo, "label", json_object_new_string("15 min load average"));
-    json_object_array_add(data, json_object_new_int(t*1000));
+    json_object_object_add(min15_jo, "label", json_object_new_string("ldavg-15"));
+    json_object_array_add(data, json_object_new_int64(t*1000));
     json_object_array_add(data, json_object_new_double(min15));
     json_object_array_add(data_holder, data);
     json_object_object_add(min15_jo, "data", data_holder);
@@ -169,7 +169,7 @@ void main_resource::render(const http_request &req, http_response **res)
     fflush(stdout);
     char pbuf[1024];
     string buffer;
-    FILE *sadf = popen("sadf -j","re");
+    FILE *sadf = popen("sadf -j -- -q","re");
     while (fgets(pbuf, sizeof(pbuf), sadf) != NULL) {
       buffer += pbuf;
     }

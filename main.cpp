@@ -24,9 +24,14 @@
 #include <time.h>
 #include <sstream>
 #include <json/json.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace std;
 using namespace httpserver;
+
+bool daemonize = false;
 
 class main_resource : public http_resource<main_resource> {
 public:
@@ -71,8 +76,10 @@ void main_resource::render(const http_request &req, http_response **res)
 	file >> last_pid;
       }
       file.close();
-      cout << "loadavg: " << min1 << " " << min5 << " " << min15 << " " 
-	   << runqueue << " " << last_pid << endl;
+      if (!daemonize) {
+	cout << "loadavg: " << min1 << " " << min5 << " " << min15 << " " 
+	     << runqueue << " " << last_pid << endl;
+      }
     }
 
     json_object_object_add(min1_jo, "label", json_object_new_string("1 min load average"));
@@ -101,7 +108,9 @@ void main_resource::render(const http_request &req, http_response **res)
     json_object_object_add(load_jo, "min5", min5_jo);
     json_object_object_add(load_jo, "min15", min15_jo);
 
-    cout << json_object_to_json_string(load_jo) << endl;
+    if (!daemonize) {
+      cout << json_object_to_json_string(load_jo) << endl;
+    }
     *res = new http_string_response(json_object_to_json_string(load_jo), 200, "text/html");
 
     json_object_put(load_jo);
@@ -136,7 +145,9 @@ void main_resource::render(const http_request &req, http_response **res)
 	file >> reads >> reads_merged >> sectors_read >> time_reads;
 	file >> writes >> writes_merged >> sectors_written >> time_writes;
 	file >> io_progress >> time_io >> weighted_time_io;
-	cout << device << " " << time_io << endl;
+	if (!daemonize) {
+	  cout << device << " " << time_io << endl;
+	}
       }
       file.close();
     }
@@ -149,17 +160,25 @@ void main_resource::render(const http_request &req, http_response **res)
     buffer += datastr.str();
     buffer += "]]\n";
     buffer += "}\n";
-    cout << buffer << endl;
+    if (!daemonize) {
+      cout << buffer << endl;
+    }
     *res = new http_string_response(buffer, 200, "text/html");
   } else {
     string cwd(get_current_dir_name());
     path = cwd + path;
-    cout << "Opening " << path << endl;
+    if (!daemonize) {
+      cout << "Opening " << path << endl;
+    }
     ifstream file(path.c_str(),ios_base::in|ios_base::ate);
     if (file.is_open()) {
-      cout << "opened" << endl;
+      if (!daemonize) {
+	cout << "opened" << endl;
+      }
       file_size = file.tellg();
-      cout << "size: " << file_size << endl;
+      if (!daemonize) {
+	cout << "size: " << file_size << endl;
+      }
       filemem_size = file_size;
       buffer = new char [filemem_size];
       file.seekg(0, ios::beg);
@@ -180,19 +199,58 @@ void main_resource::render(const http_request &req, http_response **res)
   }
 }
 
-int main(int argc, char **argv)
+int main(int argc, char * argv[])
 {
+  int32_t opt;
+  while ((opt = getopt(argc, argv, "d?h")) != -1) {
+    switch (opt) {
+    case 'd':
+      daemonize = true;
+      break;
+    case 'h':
+    case '?':
+    default:
+      cerr << "Usage: " << argv[0] << " [-d]\n";
+      cerr << "-d\t\tdaemonize\n" << endl;
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (daemonize) {
+    pid_t pid, sid;
+    
+    if ((pid = fork()) < 0) {
+      exit(EXIT_FAILURE);
+    }
+    
+    if (pid > 0) {
+      exit(EXIT_SUCCESS);
+    }
+    
+    umask(0);
+
+    if ((sid = setsid()) < 0) {
+      perror("setsid");
+      exit(EXIT_FAILURE);
+    }
+    
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+  }
+
   int port = 8080;
 
-  if (argc > 1) {
-    port = atoi(argv[1]);
-  }
   chdir("htdocs");
   webserver ws = create_webserver(port).max_threads(5);
-  main_resource mr;
+  if (!ws) {
+    cerr << "error" << endl;
+  }
 
+  main_resource mr;
   ws.register_resource("/", &mr, true);
   ws.start(true);
+  
   return 0;
 }
   

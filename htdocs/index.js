@@ -67,6 +67,14 @@ $(function() {
 
 	    for(var j=0; j < data.length; j++) {
 		for(i=data[j].length-x_dps-1; i < data[j].length; i++) {
+		    if (i < 0) {
+			i = 0;
+		    }
+
+		    if (typeof data[j][i] === 'undefined') {
+			console.log("j="+j+" i="+i+" data.length="+data.length);
+		    }
+
 		    if (data[j][i][1] > largest_y) {
 			largest_y = data[j][i][1];
 		    }
@@ -76,6 +84,11 @@ $(function() {
 	    plot.getOptions().yaxes[0].max = largest_y + largest_y*0.20;
 	    plot.getOptions().xaxes[0].min = data[0][data[0].length-1][0]-(x_dps*1000);;
 	    plot.getOptions().xaxes[0].max = data[0][data[0].length-1][0];
+
+	    console.log("yaxes.max="+plot.getOptions().yaxes[0].max);
+	    console.log("xaxes.min="+plot.getOptions().xaxes[0].min);
+	    console.log("xaxes.max="+plot.getOptions().xaxes[0].max);
+
 	} else if (data[0].length == 1) {
 	    plot.getOptions().xaxes[0].max = data[0][0][0] + (x_dps*1000);
 	}
@@ -133,6 +146,50 @@ $(function() {
 	update();
     });
 
+    function onDataReceived(series) {
+	var i;
+	
+	for (i=0; i < 4; i++) {
+	    if (typeof data[i] === 'undefined') {
+		data[i] = [];
+	    }
+	}
+	i = 0;
+	
+	for (prop in series) {
+	    for (entry in series[prop].hosts[0].statistics) {
+		var date = series[prop].hosts[0].statistics[entry].timestamp.date;
+		var time = series[prop].hosts[0].statistics[entry].timestamp.time;
+		var timestamp = Date.parse(date + "T" + time + "-0000");
+		var load1 = series[prop].hosts[0].statistics[entry].queue['ldavg-1'];
+		var load5 = series[prop].hosts[0].statistics[entry].queue['ldavg-5'];
+		var load15 = series[prop].hosts[0].statistics[entry].queue['ldavg-15'];
+		
+		i = 0;
+		label[i] = "ldavg-1";
+		data[i].push([timestamp, load1]);
+		i++;
+		
+		label[i] = "ldavg-5";
+		data[i].push([timestamp, load5]);
+		i++;
+		
+		label[i] = "ldavg-15";
+		data[i].push([timestamp, load15]);
+		i++;
+	    }
+	}
+	
+	update()
+    }
+  
+    $.ajax({
+	url: "/sysstat",
+	type: "GET",
+	dataType: "json",
+	success: onDataReceived
+    }); 
+    
     setTimeout(fetchData, 1000);
 
     // Time execution

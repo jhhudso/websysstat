@@ -23,7 +23,7 @@
 #include <fstream>
 #include <time.h>
 #include <sstream>
-#include <json/json.h>
+#include <json-c/json.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -33,15 +33,16 @@ using namespace httpserver;
 
 bool daemonize = false;
 
-class main_resource : public http_resource<main_resource> {
+class main_resource : public http_resource {
 public:
   main_resource() : last(0) { }
-  void render(const http_request &, http_response **);
+  const shared_ptr<http_response> render(const http_request&);
 private:
   int last;
 };
 
-void main_resource::render(const http_request &req, http_response **res)
+
+const shared_ptr<http_response> main_resource::render(const http_request& req)
 {
   streampos file_size;
   int filemem_size;
@@ -111,7 +112,7 @@ void main_resource::render(const http_request &req, http_response **res)
     if (!daemonize) {
       cout << json_object_to_json_string(load_jo) << endl;
     }
-    *res = new http_string_response(json_object_to_json_string(load_jo), 200, "text/html");
+    return shared_ptr<http_response>(new string_response(json_object_to_json_string(load_jo), 200, "text/html"));
 
     json_object_put(load_jo);
   } else if (path == "/diskstats") {
@@ -163,7 +164,7 @@ void main_resource::render(const http_request &req, http_response **res)
     if (!daemonize) {
       cout << buffer << endl;
     }
-    *res = new http_string_response(buffer, 200, "text/html");
+    return shared_ptr<http_response>(new string_response(buffer, 200, "text/html"));
   } else if (path == "/sysstat") {
     fflush(stdin);
     fflush(stdout);
@@ -173,7 +174,7 @@ void main_resource::render(const http_request &req, http_response **res)
     while (fgets(pbuf, sizeof(pbuf), sadf) != NULL) {
       buffer += pbuf;
     }
-    *res = new http_string_response(buffer, 200, "text/html");   
+    return shared_ptr<http_response>(new string_response(buffer, 200, "text/html"));
     pclose(sadf);
   } else {
     string cwd(get_current_dir_name());
@@ -199,15 +200,17 @@ void main_resource::render(const http_request &req, http_response **res)
     }
 
     if (buffer == NULL) {
-      *res = new http_string_response("No file found.", 404, "text/plain");
+      return shared_ptr<http_response>(new string_response("No file found.", 404, "text/plain"));
     } else {
       if (path.compare(path.length()-4,4,".css") == 0) {
-	*res = new http_string_response(buffer, 200, "text/css");
+    	  return shared_ptr<http_response>(new string_response(buffer, 200, "text/css"));
+
       } else {
-	*res = new http_string_response(buffer, 200, "text/html");
+    	  return shared_ptr<http_response>(new string_response(buffer, 200, "text/html"));
       }
     }
   }
+  return NULL;
 }
 
 int main(int argc, char * argv[])
